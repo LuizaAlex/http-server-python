@@ -114,14 +114,14 @@ def client_thread(client_socket, directory):
         client_socket.close()
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] != '--directory':
+    directory = None
+    if len(sys.argv) == 3 and sys.argv[1] == '--directory':
+        directory = sys.argv[2]
+        if not os.path.isdir(directory):
+            print(f"The directory {directory} does not exist or is not a directory.")
+            sys.exit(1)
+    elif len(sys.argv) > 1:
         print("Usage: ./your_server.sh --directory <path>")
-        sys.exit(1)
-
-    directory = sys.argv[2]
-
-    if not os.path.isdir(directory):
-        print(f"The directory {directory} does not exist or is not a directory.")
         sys.exit(1)
 
     print("Logs from your program will appear here!")
@@ -138,7 +138,6 @@ def main():
         # Handle the connection in a new thread
         thread = threading.Thread(target=client_thread, args=(client_socket, directory))
         thread.start()
-
 
 
 
