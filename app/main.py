@@ -141,8 +141,9 @@ def main():
         print(f"Connection from {client_address}")
 
         # Handle the connection in a new thread
-        thread = threading.Thread(target=client_thread, args=(client_socket,))
+        thread = threading.Thread(target=client_thread, args=(client_socket, directory))
         thread.start()
+
 
 
 
