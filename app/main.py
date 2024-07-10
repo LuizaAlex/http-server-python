@@ -30,7 +30,7 @@ def parse_request(request):
 
 
 
-def handle_request(request):
+def handle_request(request,directory):
    method, path, http_version, headers = parse_request(request)
 
    # Check if the path matches /files/{filename}
@@ -96,14 +96,18 @@ def handle_request(request):
 
    return response
 
-def client_thread(client_socket): 
+
+
+
+
+def client_thread(client_socket, directory): 
     try: 
         #Receive the request
         request = client_socket.recv(1024).decode('utf-8')
         print(f"Request: {request}")
 
         #Handle the request and generate a response:
-        response = handle_request(request)
+        response = handle_request(request, directory)
 
         #Send the response
         client_socket.sendall(response.encode('utf-8'))
@@ -113,6 +117,16 @@ def client_thread(client_socket):
 
 
 def main():
+   
+   if len(sys.argv) != 3 or sys.argv[1] != '--directory':
+        print("Usage: ./your_server.sh --directory <path>")
+        sys.exit(1)
+    
+   directory = sys.argv[2]
+    
+   if not os.path.isdir(directory):
+        print(f"The directory {directory} does not exist or is not a directory.")
+        sys.exit(1)
    
    
    print("Logs from your program will appear here!")
