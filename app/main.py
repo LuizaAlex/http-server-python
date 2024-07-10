@@ -5,7 +5,6 @@ import threading
 import os
 import sys
 
-
 def parse_request(request):
     lines = request.split('\r\n')
 
@@ -35,7 +34,7 @@ def handle_request(request, directory):
 
     # Check if the path matches /files/{filename}
     file_match = re.match(r'^/files/(.+)$', path)
-    if file_match:
+    if file_match and directory:
         # Extract file name
         filename = file_match.group(1)
         file_path = os.path.join(directory, filename)
@@ -69,7 +68,7 @@ def handle_request(request, directory):
             "\r\n"
         ]
 
-        response = "\r\n".join(response_headers) + response_body
+        response = ("\r\n".join(response_headers) + response_body).encode('utf-8')
 
     # Check if the path matches /echo/{str}
     elif re.match(r'^/echo/', path):
@@ -83,7 +82,7 @@ def handle_request(request, directory):
             "\r\n"
         ]
 
-        response = "\r\n".join(response_headers) + response_body
+        response = ("\r\n".join(response_headers) + response_body).encode('utf-8')
 
     # Check if the path matches /
     elif path == '/':
@@ -113,6 +112,8 @@ def client_thread(client_socket, directory):
         # Close the connection
         client_socket.close()
 
+
+
 def main():
     directory = None
     if len(sys.argv) == 3 and sys.argv[1] == '--directory':
@@ -140,10 +141,7 @@ def main():
         thread.start()
 
 
-
-    #server_socket.accept() # wait for client
-    #server_socket.accept()[0].sendall(b"HTTP/1.1 200 OK\r\n\r\n")
-
+    
 
 if __name__ == "__main__":
     main()
