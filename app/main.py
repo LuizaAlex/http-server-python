@@ -2,8 +2,8 @@
 import socket
 import re
 
-def handle_request(request):
-    #Split request into lines
+
+def parse_request(request):
     lines = request.split('\r\n')
 
     #Extract the request line
@@ -12,27 +12,44 @@ def handle_request(request):
     #Extract the method, path, and HTTP version
     method, path, http_version = request_line.split(' ')
 
-    #Check if the path matches /echo/{str}
 
-    # Check if the path matches /echo/{str}
-    match = re.match(r'^/echo/(.*)$', path)
-    if match:
-        echo_str = match.group(1)
-        response_body = echo_str
+    #Initiate de headers dictionary
+    headers = {} 
+
+    #Process headers
+
+    for line in lines[1:]:
+        if line.strip(): #Skip empty lines
+            header_name, header_value = line.split(": ", 1)
+            headers[header_name.lower()] = header_value 
+
+    return method, path, http_version, headers
+
+
+
+def handle_request(request):
+   method, path, http_version, headers = parse_request(request)
+
+ # Check if the path matches /user-agent
+   if path == '/user-agent':
+        user_agent = headers.get('user-agent', 'Unknown')
+        response_body = user_agent
         response_headers = [
             "HTTP/1.1 200 OK",
             "Content-Type: text/plain",
             f"Content-Length: {len(response_body)}",
             "\r\n"
+
         ]
+
         response = "\r\n".join(response_headers) + response_body
-    elif path == '/':
+   elif path == '/':
         response = "HTTP/1.1 200 OK\r\n\r\n"
-    else:
+    
+   else:
         response = "HTTP/1.1 404 Not Found\r\n\r\n"
     
-    return response
-
+   return response
     
 
 
