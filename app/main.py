@@ -11,14 +11,28 @@ def handle_request(request):
     #Extract the method, path, and HTTP version
     method, path, http_version = request_line.split(' ')
 
-    #Generate response based on the path
+    #Check if the path matches /echo/{str}
 
-    if path == '/': 
+    # Check if the path matches /echo/{str}
+    match = re.match(r'^/echo/(.*)$', path)
+    if match:
+        echo_str = match.group(1)
+        response_body = echo_str
+        response_headers = [
+            "HTTP/1.1 200 OK",
+            "Content-Type: text/plain",
+            f"Content-Length: {len(response_body)}",
+            "\r\n"
+        ]
+        response = "\r\n".join(response_headers) + response_body
+    elif path == '/':
         response = "HTTP/1.1 200 OK\r\n\r\n"
     else:
         response = "HTTP/1.1 404 Not Found\r\n\r\n"
-
+    
     return response
+
+    
 
 
 def main():
