@@ -1,5 +1,6 @@
 
 import socket
+import re
 
 def handle_request(request):
     #Split request into lines
