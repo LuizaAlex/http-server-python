@@ -1,6 +1,7 @@
 
 import socket
 import re
+import threading
 
 
 def parse_request(request):
@@ -59,33 +60,39 @@ def handle_request(request):
     
    return response
 
-
-def main():
-   
-    print("Logs from your program will appear here!")
-
-    # Create a server socket
-    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    print("Server running on localhost:4221")
-
-    while True:
-
-        #Accept a connection 
-        client_socket, client_address = server_socket.accept()
-
+def client_thread(client_socket): 
+    try: 
         #Receive the request
         request = client_socket.recv(1024).decode('utf-8')
         print(f"Request: {request}")
 
-        #Handle the response and generate a response
+        #Handle the request and generate a response:
         response = handle_request(request)
-        
+
         #Send the response
         client_socket.sendall(response.encode('utf-8'))
-
-        #Close the connection
+    finally:
+        #Close de connection 
         client_socket.close()
 
+
+def main():
+   
+   
+   print("Logs from your program will appear here!")
+
+    # Create a server socket
+   server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+   print("Server running on localhost:4221")
+
+   while True:
+        # Accept a connection
+        client_socket, client_address = server_socket.accept()
+        print(f"Connection from {client_address}")
+
+        # Handle the connection in a new thread
+        thread = threading.Thread(target=client_thread, args=(client_socket,))
+        thread.start()
 
 
 
