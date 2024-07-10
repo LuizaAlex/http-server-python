@@ -32,25 +32,32 @@ def handle_request(request):
 
  # Check if the path matches /user-agent
    if path == '/user-agent':
-        user_agent = headers.get('user-agent', 'Unknown')
+        user_agent = headers.get('user-agent', 'Unknown').strip()
         response_body = user_agent
         response_headers = [
             "HTTP/1.1 200 OK",
             "Content-Type: text/plain",
             f"Content-Length: {len(response_body)}",
             "\r\n"
-
         ]
-
+        response = "\r\n".join(response_headers) + response_body
+        
+   elif re.match(r'^/echo/', path):
+        echo_str = path.split('/')[2]
+        response_body = echo_str
+        response_headers = [
+            "HTTP/1.1 200 OK",
+            "Content-Type: text/plain",
+            f"Content-Length: {len(response_body)}",
+            "\r\n"
+        ]
         response = "\r\n".join(response_headers) + response_body
    elif path == '/':
         response = "HTTP/1.1 200 OK\r\n\r\n"
-    
    else:
         response = "HTTP/1.1 404 Not Found\r\n\r\n"
     
    return response
-    
 
 
 def main():
