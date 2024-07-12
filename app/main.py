@@ -15,9 +15,15 @@ def parse_request(request):
     # Process headers
     
     for line in lines[1:]:
-        if line.strip():  # Skip empty lines
+    if line.strip():
+        print(f"Parsing header line: '{line}'")
+        if ": " in line:
             header_name, header_value = line.split(": ", 1)
             headers[header_name.lower()] = header_value
+        else:
+            print(f"Invalid header format: '{line}'")
+            headers[line.lower()] = ""  # Tratează cazurile invalide
+
 
     return method, path, http_version, headers
 
