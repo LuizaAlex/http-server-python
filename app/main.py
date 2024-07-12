@@ -72,7 +72,7 @@ def handle_request(request, client_socket, directory):
             f"Content-Length: {len(response_body)}",
             "\r\n"
         ]
-        response = "\r\n".join(response_headers) + response_body.encode('utf-8')
+        response = "\r\n".join(response_headers).encode('utf-8') + response_body.encode('utf-8')
 
     elif re.match(r'^/echo/', path):
         echo_str = path.split('/')[2]
