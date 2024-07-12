@@ -1,31 +1,29 @@
 import asyncio
-import os
+import argparse
 import re
 import sys
 from asyncio.streams import StreamReader, StreamWriter
 from pathlib import Path
 
+GLOBALS = {}
 
-async def parse_request(reader):
-    request_line = await reader.readline()
-    method, path, http_version = request_line.decode().strip().split()
-    
-    headers = {}
-    while True:
-        header_line = await reader.readline()
-        if header_line == b'\r\n':
-            break
-        header_name, header_value = header_line.decode().strip().split(': ', 1)
-        headers[header_name.lower()] = header_value
-    
-    # Read the request body if it exists
-    content_length = int(headers.get('content-length', 0))
-    if content_length > 0:
-        request_body = await reader.read(content_length)
-    else:
-        request_body = b''
-    
-    return method, path, http_version, headers, request_body
+def stderr(*args, **kwargs):
+    print(*args, **kwargs, file=sys.stderr)
+
+def parse_request(content: bytes) -> tuple[str, str, dict[str, str], str]:
+    first_line, *tail = content.split(b"\r\n")
+    method, path, _ = first_line.split(b" ")
+    headers: dict[str, str] = {}
+    while (line := tail.pop(0)) != b"":
+        key, value = line.split(b": ")
+        headers[key.decode()] = value.decode()
+    return method.decode(), path.decode(), headers, b"".join(tail).decode()
+
+def make_response(status: int, headers: dict[str, str] | None = None, body: str = "") -> bytes:
+    headers = headers or {}
+    headers_str = "\r\n".join(f"{key}: {value}" for key, value in headers.items())
+    response = f"HTTP/1.1 {status} {status}\r\n{headers_str}\r\n\r\n{body}"
+    return response.encode()
 
 async def handle_connection(reader: StreamReader, writer: StreamWriter) -> None:
     content = await reader.read(2**16)
@@ -66,26 +64,16 @@ async def handle_connection(reader: StreamReader, writer: StreamWriter) -> None:
     await writer.drain()
     writer.close()
 
-
-async def main(directory):
-    server = await asyncio.start_server(
-        lambda r, w: handle_request(r, w, directory),
-        'localhost', 4221)
-
+async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--directory", default=".")
+    args = parser.parse_args()
+    GLOBALS["DIR"] = args.directory
+    server = await asyncio.start_server(handle_connection, "localhost", 4221)
     async with server:
-        print(f'Server running on {server.sockets[0].getsockname()}')
+        stderr("Starting server...")
+        stderr(f"--directory {GLOBALS['DIR']}")
         await server.serve_forever()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3 or sys.argv[1] != '--directory':
-        print("Usage: ./your_server.sh --directory <path>")
-        sys.exit(1)
-
-    directory = sys.argv[2]
-
-    if not os.path.isdir(directory):
-        print(f"The directory {directory} does not exist or is not a directory.")
-        sys.exit(1)
-
-    print("Logs from your program will appear here!")
-    asyncio.run(main(directory))
+    asyncio.run(main())
