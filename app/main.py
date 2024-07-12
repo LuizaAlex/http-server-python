@@ -26,7 +26,7 @@ def make_response(
 ) -> bytes:
     headers = headers or {}
     msg = {
-        200: "Ok",
+        200: "OK",
         201: "Created",
         404: "Not Found",
     }
