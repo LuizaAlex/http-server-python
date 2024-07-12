@@ -22,7 +22,7 @@ def parse_request(content: bytes) -> tuple[str, str, dict[str, str], str]:
 def make_response(
     status: int,
     headers: dict[str, str] | None = None,
-    body: str = "",
+    body: str | None = None,
 ) -> bytes:
     headers = headers or {}
     msg = {
@@ -30,18 +30,10 @@ def make_response(
         201: "Created",
         404: "Not Found",
     }
-    return b"\r\n".join(
-        map(
-            lambda i: i.encode(),
-            [
-                f"HTTP/1.1 {status} {msg[status]}",
-                *[f"{k}: {v}" for k, v in headers.items()],
-                f"Content-Length: {len(body)}",
-                "",
-                body,
-            ],
-        ),
-    )
+    if body is None:
+        return f"HTTP/1.1 {status} {msg[status]}\r\n{headers}\r\n\r\n".encode()
+    else:
+        return f"HTTP/1.1 {status} {msg[status]}\r\n{headers}\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
 
 async def handle_connection(reader: StreamReader, writer: StreamWriter) -> None:
     content = await reader.read(2**16)
