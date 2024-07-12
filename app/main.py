@@ -38,16 +38,9 @@ def handle_request(request, client_socket, directory):
 
         if method == 'POST':
             content_length = int(headers.get('content-length', 0))
-            if content_length != len(request_body):
-                # Handle mismatched content-length here if needed
-                pass
-            # Write the request body to the file
-            with open(file_path, 'w') as f:
-                f.write(request_body)
-
-            # Respond with 201 Created
-            response = f"HTTP/1.1 201 Created\r\n\r\n".encode('utf-8')
-            client_socket.sendall(response)
+            if content_length != len(request_body.encode('utf-8')):
+             response = "HTTP/1.1 400 Bad Request\r\n\r\n".encode('utf-8')
+             client_socket.sendall(response)
 
         elif method == 'GET':
             if os.path.exists(file_path) and os.path.isfile(file_path):
