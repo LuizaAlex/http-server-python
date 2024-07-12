@@ -5,34 +5,24 @@ import threading
 import os
 import sys
 
+
 def parse_request(request):
     lines = request.split('\r\n')
-
-    # Extract the request line
     request_line = lines[0]
-
-    # Extract the method, path, and HTTP version
     method, path, http_version = request_line.split(' ')
-
-    # Initiate de headers dictionary
     headers = {}
-
-    # Process headers
     for line in lines[1:]:
-        if line.strip():  # Skip empty lines
-            header_name, header_value = line.split(": ", 1)
-            headers[header_name.lower()] = header_value
-
-    body = request.split('\r\n\r\n')[1] if '\r\n\r\n' in request else ""
-    return method, path, http_version, headers, body
+        if line.strip():
+            if ": " in line:
+                header_name, header_value = line.split(": ", 1)
+                headers[header_name.lower()] = header_value
+    return method, path, http_version, headers
 
 
 
 def handle_request(method, path, headers, body, directory):
-    # Check if the path matches /files/{filename}
     file_match = re.match(r'^/files/(.+)$', path)
     if file_match:
-        # Extract file name
         filename = file_match.group(1)
         file_path = os.path.join(directory, filename)
         if method == "GET":
@@ -78,17 +68,18 @@ def handle_request(method, path, headers, body, directory):
         response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
     return response
 
+
+
 def client_thread(client_socket, directory):
     try:
-        # Receive the request
-        request_data  = client_socket.recv(1024).decode('utf-8')
-
+        request_data = client_socket.recv(1024).decode('utf-8')
         method, path, http_version, headers = parse_request(request_data)
+        
+        body = ""
         if 'content-length' in headers:
             content_length = int(headers['content-length'])
-            body = client_socket.recv(content_length).decode('utf-8')
-        else:
-            body = ""
+            if content_length > 0:
+                body = client_socket.recv(content_length).decode('utf-8')
 
         print(f"Request: {request_data}")
 
@@ -96,7 +87,6 @@ def client_thread(client_socket, directory):
         client_socket.sendall(response)
     finally:
         client_socket.close()
-
 
 
 def main():
@@ -117,7 +107,6 @@ def main():
         print(f"Connection from {client_address}")
         thread = threading.Thread(target=client_thread, args=(client_socket, directory))
         thread.start()
-
 
 
     
