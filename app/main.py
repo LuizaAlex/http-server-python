@@ -97,11 +97,11 @@ def handle_client_connection(client_socket):
     client_socket.close()
 
 
-    def main():
+def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
-        print("Logs from your program will appear here!")
+    print("Logs from your program will appear here!")
     # create the server socket
-        server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     # Main server loop to accept connections
     while True:
             client_socket, addr = server_socket.accept()
@@ -110,6 +110,6 @@ def handle_client_connection(client_socket):
                 target=handle_client_connection, args=(client_socket,)
             )
             client_handler.start()
-            
+
 if __name__ == "__main__":
     main()
