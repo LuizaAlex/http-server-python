@@ -1,53 +1,43 @@
-import socket
-import re
-import threading
+import asyncio
 import os
+import re
 import sys
 
-def parse_request(request):
-    lines = request.split('\r\n')
-    # Extract the request line
-    request_line = lines[0]
-    # Extract the method, path, and HTTP version
-    method, path, http_version = request_line.split(' ')
-    # Initialize the headers dictionary
+async def parse_request(reader):
+    request_line = await reader.readline()
+    method, path, http_version = request_line.decode().strip().split()
+    
     headers = {}
-    # Initialize the request body
-    request_body = None
-    # Process headers
-    for line in lines[1:]:
-        if line.strip():  # Skip empty lines
-            if ": " in line:
-                header_name, header_value = line.split(": ", 1)
-                headers[header_name.lower()] = header_value
-            else:
-                request_body = line  # Assume the line is the request body
-
+    while True:
+        header_line = await reader.readline()
+        if header_line == b'\r\n':
+            break
+        header_name, header_value = header_line.decode().strip().split(': ', 1)
+        headers[header_name.lower()] = header_value
+    
+    # Read the request body if it exists
+    content_length = int(headers.get('content-length', 0))
+    if content_length > 0:
+        request_body = await reader.read(content_length)
+    else:
+        request_body = b''
+    
     return method, path, http_version, headers, request_body
 
-
-def handle_request(request, client_socket, directory):
-    method, path, http_version, headers, request_body = parse_request(request)
-
-    # Check if the path matches /files/{filename}
+async def handle_request(reader, writer, directory):
+    method, path, http_version, headers, request_body = await parse_request(reader)
+    
     file_match = re.match(r'^/files/(.+)$', path)
     if file_match:
-        # Extract filename
         filename = file_match.group(1)
         file_path = os.path.join(directory, filename)
 
         if method == 'POST':
-            content_length = int(headers.get('content-length', 0))
-            if content_length != len(request_body):
-                # Handle mismatched content-length here if needed
-                pass
-            # Write the request body to the file
-            with open(file_path, 'w') as f:
+            with open(file_path, 'wb') as f:
                 f.write(request_body)
-
-            # Respond with 201 Created
-            response = f"HTTP/1.1 201 Created\r\n\r\n".encode('utf-8')
-            client_socket.sendall(response)
+            
+            response = "HTTP/1.1 201 Created\r\n\r\n"
+            writer.write(response.encode('utf-8'))
 
         elif method == 'GET':
             if os.path.exists(file_path) and os.path.isfile(file_path):
@@ -61,14 +51,14 @@ def handle_request(request, client_socket, directory):
                     "\r\n"
                 ]
                 response = "\r\n".join(response_headers).encode('utf-8') + file_content
+                writer.write(response)
             else:
-                # If file not found, return 404
-                response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
+                response = "HTTP/1.1 404 Not Found\r\n\r\n"
+                writer.write(response.encode('utf-8'))
         else:
-            # Method not allowed
-            response = "HTTP/1.1 405 Method Not Allowed\r\n\r\n".encode('utf-8')
+            response = "HTTP/1.1 405 Method Not Allowed\r\n\r\n"
+            writer.write(response.encode('utf-8'))
 
-    # Check if the path matches /user-agent
     elif path == '/user-agent':
         user_agent = headers.get('user-agent', 'Unknown').strip()
         response_body = user_agent
@@ -79,6 +69,7 @@ def handle_request(request, client_socket, directory):
             "\r\n"
         ]
         response = "\r\n".join(response_headers).encode('utf-8') + response_body.encode('utf-8')
+        writer.write(response)
 
     elif re.match(r'^/echo/', path):
         echo_str = path.split('/')[2]
@@ -90,29 +81,29 @@ def handle_request(request, client_socket, directory):
             "\r\n"
         ]
         response = "\r\n".join(response_headers).encode('utf-8') + response_body.encode('utf-8')
+        writer.write(response)
 
     elif path == '/':
-        response = "HTTP/1.1 200 OK\r\n\r\n".encode('utf-8')
+        response = "HTTP/1.1 200 OK\r\n\r\n"
+        writer.write(response.encode('utf-8'))
 
     else:
-        response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
+        response = "HTTP/1.1 404 Not Found\r\n\r\n"
+        writer.write(response.encode('utf-8'))
 
-    return response
+    await writer.drain()
+    writer.close()
 
+async def main(directory):
+    server = await asyncio.start_server(
+        lambda r, w: handle_request(r, w, directory),
+        'localhost', 4221)
 
-def client_thread(client_socket, directory):
-    try:
-        request = client_socket.recv(1024).decode('utf-8')
-        print(f"Request: {request}")
-        response = handle_request(request, client_socket, directory)
-        client_socket.sendall(response)
-    except Exception as e:
-        print(f"Error handling request: {e}")
-    finally:
-        client_socket.close()
+    async with server:
+        print(f'Server running on {server.sockets[0].getsockname()}')
+        await server.serve_forever()
 
-
-def main():
+if __name__ == "__main__":
     if len(sys.argv) != 3 or sys.argv[1] != '--directory':
         print("Usage: ./your_server.sh --directory <path>")
         sys.exit(1)
@@ -124,19 +115,4 @@ def main():
         sys.exit(1)
 
     print("Logs from your program will appear here!")
-
-    # Create a server socket
-    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    print("Server running on localhost:4221")
-
-    while True:
-        # Accept a connection
-        client_socket, client_address = server_socket.accept()
-        print(f"Connection from {client_address}")
-
-        # Handle the connection in a new thread
-        thread = threading.Thread(target=client_thread, args=(client_socket, directory))
-        thread.start()
-
-if __name__ == "__main__":
-    main()
+    asyncio.run(main(directory))
