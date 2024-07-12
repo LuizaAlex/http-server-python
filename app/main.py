@@ -26,9 +26,9 @@ def make_response(
 ) -> bytes:
     headers = headers or {}
     msg = {
-        200: "OK",
-        201: "CREATED",
-        404: "NOT FOUND",
+        200: "Ok",
+        201: "Created",
+        404: "Not Found",
     }
     return b"\r\n".join(
         map(
