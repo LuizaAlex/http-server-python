@@ -23,38 +23,40 @@ def parse_request(request):
             header_name, header_value = line.split(": ", 1)
             headers[header_name.lower()] = header_value
 
-    return method, path, http_version, headers
+    body = request.split('\r\n\r\n')[1] if '\r\n\r\n' in request else ""
+    return method, path, http_version, headers, body
 
 
 
 
 
 def handle_request(request, directory):
-    method, path, http_version, headers = parse_request(request)
+    method, path, http_version, headers, body = parse_request(request)
 
     # Check if the path matches /files/{filename}
     file_match = re.match(r'^/files/(.+)$', path)
-    if file_match and directory:
-        # Extract file name
+    if file_match:
         filename = file_match.group(1)
         file_path = os.path.join(directory, filename)
 
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            # If file exists, read its content
-            with open(file_path, 'rb') as f:
-                file_content = f.read()
+        if method == "GET":
+                if os.path.exists(file_path) and os.path.isfile(file_path):
+                    with open(file_path, 'rb') as f:
+                        file_content = f.read()
 
-            response_headers = [
-                "HTTP/1.1 200 OK",
-                "Content-Type: application/octet-stream",
-                f"Content-Length: {len(file_content)}",
-                "\r\n"
-            ]
-
-            response = "\r\n".join(response_headers).encode('utf-8') + file_content
-        else:
-            # If file not found, return 404
-            response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
+                    response_headers = [
+                        "HTTP/1.1 200 OK",
+                        "Content-Type: application/octet-stream",
+                        f"Content-Length: {len(file_content)}",
+                        "\r\n"
+                    ]
+                    response = "\r\n".join(response_headers).encode('utf-8') + file_content
+                else:
+                    response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
+        elif method == "POST":
+                with open(file_path, 'wb') as f:
+                    f.write(body.encode('utf-8'))
+  
 
     # Check if the path matches /user-agent
     elif path == '/user-agent':
