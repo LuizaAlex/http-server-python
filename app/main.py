@@ -12,23 +12,22 @@ def parse_request(request):
     method, path, http_version = request_line.split(' ')
     # Initialize the headers dictionary
     headers = {}
+    # Initialize the request body
+    request_body = None
     # Process headers
-    
     for line in lines[1:]:
-        if line.strip():
-            print(f"Parsing header line: '{line}'")
+        if line.strip():  # Skip empty lines
             if ": " in line:
                 header_name, header_value = line.split(": ", 1)
                 headers[header_name.lower()] = header_value
             else:
-                print(f"Invalid header format: '{line}'")
-                headers[line.lower()] = ""  # Tratează cazurile invalide
+                request_body = line  # Assume the line is the request body
 
+    return method, path, http_version, headers, request_body
 
-    return method, path, http_version, headers
 
 def handle_request(request, client_socket, directory):
-    method, path, http_version, headers = parse_request(request)
+    method, path, http_version, headers, request_body = parse_request(request)
 
     # Check if the path matches /files/{filename}
     file_match = re.match(r'^/files/(.+)$', path)
@@ -39,15 +38,16 @@ def handle_request(request, client_socket, directory):
 
         if method == 'POST':
             content_length = int(headers.get('content-length', 0))
-            # Read the request body
-            request_body = client_socket.recv(content_length).decode('utf-8')
-
+            if content_length != len(request_body):
+                # Handle mismatched content-length here if needed
+                pass
             # Write the request body to the file
             with open(file_path, 'w') as f:
                 f.write(request_body)
 
             # Respond with 201 Created
             response = f"HTTP/1.1 201 Created\r\n\r\n".encode('utf-8')
+            client_socket.sendall(response)
 
         elif method == 'GET':
             if os.path.exists(file_path) and os.path.isfile(file_path):
