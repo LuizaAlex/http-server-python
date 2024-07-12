@@ -24,75 +24,45 @@ async def parse_request(reader):
     
     return method, path, http_version, headers, request_body
 
-async def handle_request(reader, writer, directory):
-    method, path, http_version, headers, request_body = await parse_request(reader)
-    
-    file_match = re.match(r'^/files/(.+)$', path)
-    if file_match:
-        filename = file_match.group(1)
-        file_path = os.path.join(directory, filename)
+async def handle_connection(reader: StreamReader, writer: StreamWriter) -> None:
+    content = await reader.read(2**16)
+    method, path, headers, body = parse_request(content)
 
-        if method == 'POST':
-            with open(file_path, 'wb') as f:
-                f.write(request_body)
-            
-            response = "HTTP/1.1 201 Created\r\n\r\n"
-            writer.write(response.encode('utf-8'))
+    if path == "/":
+        writer.write(b"HTTP/1.1 200 OK\r\n\r\n")
+        stderr("[OUT] echo 200 OK")
 
-        elif method == 'GET':
-            if os.path.exists(file_path) and os.path.isfile(file_path):
-                with open(file_path, 'rb') as f:
-                    file_content = f.read()
+    elif match := re.fullmatch(r"/files/(.+)", path):
+        filename = match.group(1)
+        file_path = Path(GLOBALS["DIR"]) / filename
 
-                response_headers = [
-                    "HTTP/1.1 200 OK",
-                    "Content-Type: application/octet-stream",
-                    f"Content-Length: {len(file_content)}",
-                    "\r\n"
-                ]
-                response = "\r\n".join(response_headers).encode('utf-8') + file_content
-                writer.write(response)
+        if method.upper() == "GET":
+            if file_path.is_file():
+                file_content = file_path.read_bytes()
+                writer.write(
+                    make_response(
+                        200,
+                        {"Content-Type": "application/octet-stream"},
+                        file_content.decode(),
+                    )
+                )
             else:
-                response = "HTTP/1.1 404 Not Found\r\n\r\n"
-                writer.write(response.encode('utf-8'))
+                writer.write(make_response(404))
+        elif method.upper() == "POST":
+            file_path.write_bytes(body.encode())
+            writer.write(make_response(201))
         else:
-            response = "HTTP/1.1 405 Method Not Allowed\r\n\r\n"
-            writer.write(response.encode('utf-8'))
-
-    elif path == '/user-agent':
-        user_agent = headers.get('user-agent', 'Unknown').strip()
-        response_body = user_agent
-        response_headers = [
-            "HTTP/1.1 200 OK",
-            "Content-Type: text/plain",
-            f"Content-Length: {len(response_body)}",
-            "\r\n"
-        ]
-        response = "\r\n".join(response_headers).encode('utf-8') + response_body.encode('utf-8')
-        writer.write(response)
-
-    elif re.match(r'^/echo/', path):
-        echo_str = path.split('/')[2]
-        response_body = echo_str
-        response_headers = [
-            "HTTP/1.1 200 OK",
-            "Content-Type: text/plain",
-            f"Content-Length: {len(response_body)}",
-            "\r\n"
-        ]
-        response = "\r\n".join(response_headers).encode('utf-8') + response_body.encode('utf-8')
-        writer.write(response)
-
-    elif path == '/':
-        response = "HTTP/1.1 200 OK\r\n\r\n"
-        writer.write(response.encode('utf-8'))
+            writer.write(make_response(404))
+        
+        stderr(f"[OUT] file {path}")
 
     else:
-        response = "HTTP/1.1 404 Not Found\r\n\r\n"
-        writer.write(response.encode('utf-8'))
+        writer.write(make_response(404))
+        stderr("[OUT] 404")
 
     await writer.drain()
     writer.close()
+
 
 async def main(directory):
     server = await asyncio.start_server(
