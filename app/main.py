@@ -13,15 +13,11 @@ def parse_request(request):
     # Initialize the headers dictionary
     headers = {}
     # Process headers
+    
     for line in lines[1:]:
         if line.strip():  # Skip empty lines
-            if ": " in line:
-                header_name, header_value = line.split(": ", 1)
-                headers[header_name.lower()] = header_value
-            else:
-                # Handle cases where there's no ": " in the header line
-                header_name = line.strip()
-                headers[header_name.lower()] = ""
+            header_name, header_value = line.split(": ", 1)
+            headers[header_name.lower()] = header_value
 
     return method, path, http_version, headers
 
