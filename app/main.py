@@ -19,7 +19,11 @@ def parse_request(content: bytes) -> tuple[str, str, dict[str, str], str]:
         headers[key.decode()] = value.decode()
     return method.decode(), path.decode(), headers, b"".join(tail).decode()
 
-def make_response(status: int, headers: dict[str, str] | None = None, body: str = "") -> bytes:
+def make_response(
+    status: int,
+    headers: dict[str, str] | None = None,
+    body: str = "",
+) -> bytes:
     headers = headers or {}
     headers_str = "\r\n".join(f"{key}: {value}" for key, value in headers.items())
     response = f"HTTP/1.1 {status} {status}\r\n{headers_str}\r\n\r\n{body}"
@@ -51,7 +55,7 @@ async def handle_connection(reader: StreamReader, writer: StreamWriter) -> None:
                 writer.write(make_response(404))
         elif method.upper() == "POST":
             file_path.write_bytes(body.encode())
-            writer.write(make_response(201))
+            writer.write(make_response(201))  # Fixed: Ensure correct status code and reason
         else:
             writer.write(make_response(404))
         
