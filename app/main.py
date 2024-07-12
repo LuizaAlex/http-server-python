@@ -69,7 +69,6 @@ def handle_request(method, path, headers, body, directory):
     return response
 
 
-
 def client_thread(client_socket, directory):
     try:
         request_data = client_socket.recv(1024).decode('utf-8')
@@ -87,6 +86,7 @@ def client_thread(client_socket, directory):
         client_socket.sendall(response)
     finally:
         client_socket.close()
+
 
 
 def main():
