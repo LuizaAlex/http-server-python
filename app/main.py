@@ -1,89 +1,115 @@
-import asyncio
-import argparse
+import socket
 import re
 import sys
-from asyncio.streams import StreamReader, StreamWriter
-from pathlib import Path
+import threading
+import os
 
-GLOBALS = {}
+def endpoint_echo(request):
+    echo_pattern = re.compile(r"/echo/([^ ]+)")
+    body = re.search(echo_pattern, request).group(1)
+    response = (
+        "HTTP/1.1 200 OK"
+        "\r\n"
+        f"Content-Type: text/plain\r\nContent-Length: {len(body)}\r\n"
+        "\r\n"
+        f"{body}"
+    )
+    return response
 
-def stderr(*args, **kwargs):
-    print(*args, **kwargs, file=sys.stderr)
-
-def parse_request(content: bytes) -> tuple[str, str, dict[str, str], str]:
-    first_line, *tail = content.split(b"\r\n")
-    method, path, _ = first_line.split(b" ")
-    headers: dict[str, str] = {}
-    while (line := tail.pop(0)) != b"":
-        key, value = line.split(b": ")
-        headers[key.decode()] = value.decode()
-    return method.decode(), path.decode(), headers, b"".join(tail).decode()
-
-def make_response(
-    status: int,
-    headers: dict[str, str] | None = None,
-    body: str | None = None,
-) -> bytes:
-    headers = headers or {}
-    msg = {
-        200: "OK",
-        201: "Created",
-        404: "Not Found",
-    }
-    if body is None:
-        return f"HTTP/1.1 {status} {msg[status]}\r\n{headers}\r\n\r\n".encode()
+def handle_file_get(filepath):
+    if os.path.exists(filepath):
+        print("file exist")
+        with open(filepath, "r") as f:
+            file_content = f.read()
+        response = (
+            "HTTP/1.1 200 OK"
+            "\r\n"
+            f"Content-Type: application/octet-stream\r\n"
+            f"Content-Length: {len(file_content)}\r\n"
+            "\r\n"
+            f"{file_content}"
+        )
     else:
-        return f"HTTP/1.1 {status} {msg[status]}\r\n{headers}\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
+        print("file not found")
+        response = "HTTP/1.1 404 Not Found" "\r\n" "\r\n"
+    return response
 
-async def handle_connection(reader: StreamReader, writer: StreamWriter) -> None:
-    content = await reader.read(2**16)
-    method, path, headers, body = parse_request(content)
 
-    if path == "/":
-        writer.write(b"HTTP/1.1 200 OK\r\n\r\n")
-        stderr("[OUT] echo 200 OK")
+def handle_file_post(request, filepath):
+    # extract the text content from the request
+    request_part = request.split("\r\n")
+    request_body = request_part[-1]
+    # open the file using the file path and write the content
+    with open(filepath, "w") as f:
+        f.write(request_body)
+    # return response 201
+    response = "HTTP/1.1 201 Created" "\r\n" "\r\n"
+    return response
+def endpoint_file(request, request_method):
+    FILE_DIRECTORY = sys.argv[2]
+    filename = re.search(r"/files/([^ ]+)", request).group(1)
+    filepath = os.path.join(FILE_DIRECTORY, filename)
+    match request_method:
+        case "GET":
+            response = handle_file_get(filepath)
+        case "POST":
+            response = handle_file_post(request, filepath)
+        case _:
+            response = "invalid method"
+    return response
 
-    elif match := re.fullmatch(r"/files/(.+)", path):
-        filename = match.group(1)
-        file_path = Path(GLOBALS["DIR"]) / filename
 
-        if method.upper() == "GET":
-            if file_path.is_file():
-                file_content = file_path.read_bytes()
-                writer.write(
-                    make_response(
-                        200,
-                        {"Content-Type": "application/octet-stream"},
-                        file_content.decode(),
-                    )
-                )
-            else:
-                writer.write(make_response(404))
-        elif method.upper() == "POST":
-            file_path.write_bytes(body.encode())
-            writer.write(make_response(201))  # Fixed: Ensure correct status code and reason
-        else:
-            writer.write(make_response(404))
-        
-        stderr(f"[OUT] file {path}")
-
+def endpoint_user_agent(request):
+    print(request)
+    user_agent_value = re.search(r"User-Agent:\s*(.+)", request).group(1).strip()
+    response = (
+        "HTTP/1.1 200 OK"
+        "\r\n"
+        f"Content-Type: text/plain\r\nContent-Length: {len(user_agent_value)}\r\n"
+        "\r\n"
+        f"{user_agent_value}"
+    )
+    return response
+def handle_client_connection(client_socket):
+    # handle client socket
+    request = client_socket.recv(1024).decode("utf-8")
+    match = re.match(r"([^ ]*) (/[^ ]*) HTTP/1.1", request)
+    if match:
+        request_method = match.group(1)
+        endpoint = match.group(2)
     else:
-        writer.write(make_response(404))
-        stderr("[OUT] 404")
+        endpoint = "/"
 
-    await writer.drain()
-    writer.close()
+        # handling different endpoint
+    match endpoint:
+        case "/":  # null
+            response = "HTTP/1.1 200 OK" + "\r\n" + "\r\n"
+        case endpoint if endpoint.startswith("/echo/"):  # echo
+            response = endpoint_echo(request)
+        case endpoint if endpoint.startswith("/files/"):  # file
+            response = endpoint_file(request, request_method)
+        case "/user-agent":  # user-agent
+            response = endpoint_user_agent(request)
+        case _:  # not found
+            response = "HTTP/1.1 404 Not Found" + "\r\n" + "\r\n"
+    print(response)
+    client_socket.sendall(response.encode())
+    client_socket.close()
 
-async def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--directory", default=".")
-    args = parser.parse_args()
-    GLOBALS["DIR"] = args.directory
-    server = await asyncio.start_server(handle_connection, "localhost", 4221)
-    async with server:
-        stderr("Starting server...")
-        stderr(f"--directory {GLOBALS['DIR']}")
-        await server.serve_forever()
 
+    def main():
+    # You can use print statements as follows for debugging, they'll be visible when running tests.
+        print("Logs from your program will appear here!")
+    # create the server socket
+        server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+    # Main server loop to accept connections
+    while True:
+            client_socket, addr = server_socket.accept()
+            print(f"Accepted connection from {addr}")
+            client_handler = threading.Thread(
+                target=handle_client_connection, args=(client_socket,)
+            )
+            client_handler.start()
+            
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
