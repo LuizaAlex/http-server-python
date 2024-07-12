@@ -4,7 +4,6 @@ import threading
 import os
 import sys
 
-
 def parse_request(request):
     lines = request.split('\r\n')
     # Extract the request line
@@ -19,7 +18,6 @@ def parse_request(request):
             header_name, header_value = line.split(": ", 1)
             headers[header_name.lower()] = header_value
     return method, path, http_version, headers
-
 
 def handle_request(request, client_socket, directory):
     method, path, http_version, headers = parse_request(request)
@@ -41,7 +39,7 @@ def handle_request(request, client_socket, directory):
                 f.write(request_body)
 
             # Respond with 201 Created
-            response = "HTTP/1.1 201 Created\r\n\r\n".encode('utf-8')
+            response = f"HTTP/1.1 201 Created\r\n\r\n".encode('utf-8')
 
         elif method == 'GET':
             if os.path.exists(file_path) and os.path.isfile(file_path):
@@ -93,7 +91,6 @@ def handle_request(request, client_socket, directory):
 
     return response
 
-
 def client_thread(client_socket, directory):
     try:
         # Receive the request
@@ -108,7 +105,6 @@ def client_thread(client_socket, directory):
     finally:
         # Close the connection
         client_socket.close()
-
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] != '--directory':
@@ -135,7 +131,6 @@ def main():
         # Handle the connection in a new thread
         thread = threading.Thread(target=client_thread, args=(client_socket, directory))
         thread.start()
-
 
 if __name__ == "__main__":
     main()
