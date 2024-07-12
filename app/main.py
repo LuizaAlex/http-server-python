@@ -99,20 +99,18 @@ def handle_request(request, client_socket, directory):
 
     return response
 
+
 def client_thread(client_socket, directory):
     try:
-        # Receive the request
         request = client_socket.recv(1024).decode('utf-8')
         print(f"Request: {request}")
-
-        # Handle the request and generate a response
         response = handle_request(request, client_socket, directory)
-
-        # Send the response
         client_socket.sendall(response)
+    except Exception as e:
+        print(f"Error handling request: {e}")
     finally:
-        # Close the connection
         client_socket.close()
+
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] != '--directory':
