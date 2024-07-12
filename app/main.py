@@ -25,9 +25,23 @@ def make_response(
     body: str = "",
 ) -> bytes:
     headers = headers or {}
-    headers_str = "\r\n".join(f"{key}: {value}" for key, value in headers.items())
-    response = f"HTTP/1.1 {status} {status}\r\n{headers_str}\r\n\r\n{body}"
-    return response.encode()
+    msg = {
+        200: "OK",
+        201: "CREATED",
+        404: "NOT FOUND",
+    }
+    return b"\r\n".join(
+        map(
+            lambda i: i.encode(),
+            [
+                f"HTTP/1.1 {status} {msg[status]}",
+                *[f"{k}: {v}" for k, v in headers.items()],
+                f"Content-Length: {len(body)}",
+                "",
+                body,
+            ],
+        ),
+    )
 
 async def handle_connection(reader: StreamReader, writer: StreamWriter) -> None:
     content = await reader.read(2**16)
