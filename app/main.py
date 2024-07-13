@@ -31,6 +31,15 @@ def parse_request(request):
 def handle_request(request, directory):
     method, path, http_version, headers, body = parse_request(request)
 
+    # Common response headers
+    response_headers = [
+        "HTTP/1.1 200 OK",
+        "Content-Type: text/plain"
+    ]
+
+    if 'accept-encoding' in headers:
+        response_headers.append("Content-Encoding: identity")
+
     # Handle POST request to /files/{filename}
     if method == 'POST' and re.match(r'^/files/(.+)$', path):
         file_match = re.match(r'^/files/(.+)$', path)
@@ -109,6 +118,9 @@ def handle_request(request, directory):
     # For any other path, return 404
     else:
         response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
+
+    # Join common response headers
+    response = "\r\n".join(response_headers).encode('utf-8') + response
 
     return response
 
