@@ -13,7 +13,7 @@ def parse_request(request):
     # Extract the method, path, and HTTP version
     method, path, http_version = request_line.split(' ')
 
-    # Initiate de headers dictionary
+    # Initiate the headers dictionary
     headers = {}
 
     # Process headers
@@ -51,10 +51,24 @@ def handle_request(request, directory):
                 f.write(body.encode('utf-8'))
 
             # Respond with 201 Created
-            response = "HTTP/1.1 201 Created\r\n\r\n".encode('utf-8')
+            response_headers = [
+                "HTTP/1.1 201 Created",
+                "Content-Type: text/plain",
+                "Content-Length: 0",
+                "\r\n"
+            ]
+            response = "\r\n".join(response_headers).encode('utf-8')
+            return response
         else:
             # If directory not specified or invalid, return 400 Bad Request
-            response = "HTTP/1.1 400 Bad Request\r\n\r\n".encode('utf-8')
+            response_headers = [
+                "HTTP/1.1 400 Bad Request",
+                "Content-Type: text/plain",
+                "Content-Length: 0",
+                "\r\n"
+            ]
+            response = "\r\n".join(response_headers).encode('utf-8')
+            return response
 
     # Handle GET request to /files/{filename}
     elif method == 'GET' and re.match(r'^/files/(.+)$', path):
@@ -79,7 +93,14 @@ def handle_request(request, directory):
                 response = "\r\n".join(response_headers).encode('utf-8') + file_content
             else:
                 # If file not found, return 404
-                response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
+                response_headers = [
+                    "HTTP/1.1 404 Not Found",
+                    "Content-Type: text/plain",
+                    "Content-Length: 0",
+                    "\r\n"
+                ]
+                response = "\r\n".join(response_headers).encode('utf-8')
+                return response
 
     # Check if the path matches /user-agent
     elif method == 'GET' and path == '/user-agent':
@@ -102,7 +123,13 @@ def handle_request(request, directory):
 
     # For any other path, return 404
     else:
-        response = "HTTP/1.1 404 Not Found\r\n\r\n".encode('utf-8')
+        response_headers = [
+            "HTTP/1.1 404 Not Found",
+            "Content-Type: text/plain",
+            "Content-Length: 0",
+            "\r\n"
+        ]
+        response = "\r\n".join(response_headers).encode('utf-8')
         return response
 
     response_headers.append(f"Content-Length: {len(response_body)}")
