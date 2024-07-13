@@ -4,6 +4,7 @@ import threading
 import os
 import sys
 import gzip
+import io
 
 
 def parse_request(request):
