@@ -3,6 +3,8 @@ import re
 import threading
 import os
 import sys
+import gzip
+
 
 def parse_request(request):
     lines = request.split('\r\n')
@@ -116,7 +118,24 @@ def handle_request(request, directory):
         # Check for Accept-Encoding header
         accept_encoding = headers.get('accept-encoding', '')
         if 'gzip' in accept_encoding:
+            # Compress response body using gzip
+            gzip_buffer = io.BytesIO()
+            with gzip.GzipFile(fileobj=gzip_buffer, mode='wb') as gzipped:
+                gzipped.write(response_body.encode('utf-8'))
+            compressed_content = gzip_buffer.getvalue()
+
+            # Update headers for gzip compression
             response_headers.append("Content-Encoding: gzip")
+            response_headers.append(f"Content-Length: {len(compressed_content)}")
+
+            # Prepare response with compressed content
+            response = "\r\n".join(response_headers).encode('utf-8') + b"\r\n\r\n" + compressed_content
+        else:
+            # No compression requested, send uncompressed response
+            response_headers.append(f"Content-Length: {len(response_body)}")
+            response = "\r\n".join(response_headers).encode('utf-8') + b"\r\n\r\n" + response_body.encode('utf-8')
+
+        return response
 
     # Check if the path matches /
     elif method == 'GET' and path == '/':
