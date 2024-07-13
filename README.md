@@ -1,6 +1,6 @@
 
 
-This is a starting point for Python solutions to the
+This project was part of the challenge:
 ["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
 
 HTTP Server with Gzip Compression Support
