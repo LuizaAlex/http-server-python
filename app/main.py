@@ -91,6 +91,7 @@ def handle_request(request, directory):
                 ]
 
                 response = "\r\n".join(response_headers).encode('utf-8') + file_content
+                return response
             else:
                 # If file not found, return 404
                 response_headers = [
