@@ -1,38 +1,18 @@
-[![progress-banner](https://backend.codecrafters.io/progress/http-server/4e0599da-f90f-4253-a87e-a5947d2fca22)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+
 
 This is a starting point for Python solutions to the
 ["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
 
-[HTTP](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol) is the
-protocol that powers the web. In this challenge, you'll build a HTTP/1.1 server
-that is capable of serving multiple clients.
+HTTP Server with Gzip Compression Support
 
-Along the way you'll learn about TCP servers,
-[HTTP request syntax](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html),
-and more.
+This project is a Python-based HTTP server implementation that supports basic HTTP methods (GET and POST) and includes gzip compression for responses. It was developed as part of challenges from Codecrafters.io to build a robust HTTP server capable of handling various HTTP requests and responses efficiently.
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Features
 
-# Passing the first stage
+- **GET and POST Requests:** Handles GET requests for retrieving files and POST requests for creating files.
+- **File Handling:** Supports file operations such as reading from and writing to specified directories.
+- **User-Agent and Echo Endpoints:** Includes endpoints for retrieving User-Agent information and echoing requested strings.
+- **Accept-Encoding Header:** Implements gzip compression for responses when requested via the Accept-Encoding header.
 
-The entry point for your HTTP server implementation is in `app/main.py`. Study
-and uncomment the relevant code, and push your changes to pass the first stage:
-
-```sh
-git add .
-git commit -m "pass 1st stage" # any msg
-git push origin master
-```
-
-Time to move on to the next stage!
-
-# Stage 2 & beyond
-
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `python (3.11)` installed locally
-1. Run `./your_server.sh` to run your program, which is implemented in
-   `app/main.py`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+Running the Server
+To run the HTTP server, execute the following command: ./your_server.sh
